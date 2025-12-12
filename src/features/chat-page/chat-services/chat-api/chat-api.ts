@@ -17,8 +17,9 @@ import { GetDefaultExtensions } from "./chat-api-default-extensions";
 import { GetDynamicExtensions } from "./chat-api-dynamic-extensions";
 import { ChatApiExtensions } from "./chat-api-extension";
 import { ChatApiMultimodal } from "./chat-api-multimodal";
+import { ChatApiReasoning } from "./chat-api-reasoning";
 import { OpenAIStream } from "./open-ai-stream";
-type ChatTypes = "extensions" | "chat-with-file" | "multimodal";
+type ChatTypes = "extensions" | "chat-with-file" | "multimodal" | "reasoning";
 
 export const ChatAPIEntry = async (props: UserPrompt, signal: AbortSignal) => {
   const currentChatThreadResponse = await EnsureChatThreadOperation(props.id);
@@ -46,12 +47,18 @@ export const ChatAPIEntry = async (props: UserPrompt, signal: AbortSignal) => {
 
   let chatType: ChatTypes = "extensions";
 
+  const reasoningEnabled =
+    process.env.ENABLE_GPT5_REASONING === "true" &&
+    !!process.env.AZURE_OPENAI_REASONING_API_DEPLOYMENT_NAME;
+
   if (props.multimodalImage && props.multimodalImage.length > 0) {
     chatType = "multimodal";
   } else if (docs.length > 0) {
     chatType = "chat-with-file";
   } else if (extension.length > 0) {
     chatType = "extensions";
+  } else if (reasoningEnabled) {
+    chatType = "reasoning";
   }
 
   // save the user message
@@ -88,6 +95,14 @@ export const ChatAPIEntry = async (props: UserPrompt, signal: AbortSignal) => {
         userMessage: props.message,
         history: history,
         extensions: extension,
+        signal: signal,
+      });
+      break;
+    case "reasoning":
+      runner = await ChatApiReasoning({
+        chatThread: currentChatThread,
+        userMessage: props.message,
+        history: history,
         signal: signal,
       });
       break;

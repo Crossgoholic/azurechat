@@ -9,6 +9,11 @@ param chatGptDeploymentCapacity int
 param chatGptDeploymentName string
 param chatGptModelName string
 param chatGptModelVersion string
+param enableReasoningDeployment bool
+param reasoningDeploymentCapacity int
+param reasoningDeploymentName string
+param reasoningModelName string
+param reasoningModelVersion string
 param embeddingDeploymentName string
 param embeddingDeploymentCapacity int
 param embeddingModelName string
@@ -73,7 +78,7 @@ var databaseName = 'chat'
 var historyContainerName = 'history'
 var configContainerName = 'config'
 
-var llmDeployments = [
+var llmDeployments = concat([
   {
     name: chatGptDeploymentName
     model: {
@@ -95,7 +100,20 @@ var llmDeployments = [
     }
     capacity: embeddingDeploymentCapacity
   }
-]
+], enableReasoningDeployment ? [
+  {
+    name: reasoningDeploymentName
+    model: {
+      format: 'OpenAI'
+      name: reasoningModelName
+      version: reasoningModelVersion
+    }
+    sku: {
+      name: 'GlobalStandard'
+      capacity: reasoningDeploymentCapacity
+    }
+  }
+] : [])
 
 module privateEndpoints 'private_endpoints_core.bicep' = if (usePrivateEndpoints) {
   name: 'private-endpoints'
@@ -134,7 +152,7 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2020-06-01' = {
   kind: 'linux'
 }
 
-var appSettingsCommon = [
+var appSettingsCommon = concat([
   {
     name: 'USE_MANAGED_IDENTITIES'
     value: disableLocalAuth
@@ -163,6 +181,24 @@ var appSettingsCommon = [
   {
     name: 'AZURE_OPENAI_API_VERSION'
     value: openai_api_version
+  }
+  if (enableReasoningDeployment) {
+    {
+      name: 'ENABLE_GPT5_REASONING'
+      value: 'true'
+    }
+    {
+      name: 'AZURE_OPENAI_REASONING_API_INSTANCE_NAME'
+      value: openai_name
+    }
+    {
+      name: 'AZURE_OPENAI_REASONING_API_DEPLOYMENT_NAME'
+      value: reasoningDeploymentName
+    }
+    {
+      name: 'AZURE_OPENAI_REASONING_API_VERSION'
+      value: openai_api_version
+    }
   }
   {
     name: 'AZURE_OPENAI_DALLE_API_INSTANCE_NAME'
@@ -212,11 +248,28 @@ var appSettingsCommon = [
     name: 'AZURE_STORAGE_ACCOUNT_NAME'
     value: storage_name
   }
-]
+], enableReasoningDeployment ? [
+  {
+    name: 'ENABLE_GPT5_REASONING'
+    value: 'true'
+  }
+  {
+    name: 'AZURE_OPENAI_REASONING_API_INSTANCE_NAME'
+    value: openai_name
+  }
+  {
+    name: 'AZURE_OPENAI_REASONING_API_DEPLOYMENT_NAME'
+    value: reasoningDeploymentName
+  }
+  {
+    name: 'AZURE_OPENAI_REASONING_API_VERSION'
+    value: openai_api_version
+  }
+] : [])
 
 var appSettingsWithLocalAuth = disableLocalAuth
   ? []
-  : [
+  : concat([
       {
         name: 'AZURE_OPENAI_API_KEY'
         value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_OPENAI_API_KEY.name})'
@@ -241,7 +294,12 @@ var appSettingsWithLocalAuth = disableLocalAuth
         name: 'AZURE_STORAGE_ACCOUNT_KEY'
         value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_STORAGE_ACCOUNT_KEY.name})'
       }
-    ]
+    ], enableReasoningDeployment ? [
+      {
+        name: 'AZURE_OPENAI_REASONING_API_KEY'
+        value: '@Microsoft.KeyVault(VaultName=${kv.name};SecretName=${kv::AZURE_OPENAI_API_KEY.name})'
+      }
+    ] : [])
 
 resource webApp 'Microsoft.Web/sites@2024-04-01' = {
   name: webapp_name

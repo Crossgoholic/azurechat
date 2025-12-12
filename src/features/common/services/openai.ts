@@ -3,9 +3,32 @@ import { DefaultAzureCredential, getBearerTokenProvider } from "@azure/identity"
 import { AzureOpenAI } from "openai";
 
 const USE_MANAGED_IDENTITIES = process.env.USE_MANAGED_IDENTITIES === "true";
+const DEFAULT_ENDPOINT_SUFFIX =
+  process.env.AZURE_OPENAI_API_ENDPOINT_SUFFIX || "openai.azure.com";
+
+const resolveReasoningConfig = () => {
+  const instance =
+    process.env.AZURE_OPENAI_REASONING_API_INSTANCE_NAME ||
+    process.env.AZURE_OPENAI_API_INSTANCE_NAME;
+  const deployment = process.env.AZURE_OPENAI_REASONING_API_DEPLOYMENT_NAME;
+  const apiVersion =
+    process.env.AZURE_OPENAI_REASONING_API_VERSION ||
+    process.env.AZURE_OPENAI_API_VERSION;
+  const token =
+    process.env.AZURE_OPENAI_REASONING_API_KEY ||
+    process.env.AZURE_OPENAI_API_KEY;
+
+  if (!instance || !deployment || !apiVersion) {
+    throw new Error(
+      "Missing GPT-5.2 reasoning configuration. Please ensure AZURE_OPENAI_REASONING_* variables are set."
+    );
+  }
+
+  return { instance, deployment, apiVersion, token };
+};
 
 export const OpenAIInstance =  () => {
-  const endpointSuffix = process.env.AZURE_OPENAI_API_ENDPOINT_SUFFIX || "openai.azure.com";
+  const endpointSuffix = DEFAULT_ENDPOINT_SUFFIX;
   let token = process.env.AZURE_OPENAI_API_KEY;
   if (USE_MANAGED_IDENTITIES) {
     const credential = new DefaultAzureCredential();
@@ -60,7 +83,7 @@ export const OpenAIEmbeddingInstance =  () => {
 
 // A new instance definition for DALL-E image generation
 export const OpenAIDALLEInstance =  () => {
-  const endpointSuffix = process.env.AZURE_OPENAI_API_ENDPOINT_SUFFIX || "openai.azure.com";
+  const endpointSuffix = DEFAULT_ENDPOINT_SUFFIX;
   let token = process.env.AZURE_OPENAI_DALLE_API_KEY;
   if (USE_MANAGED_IDENTITIES) {
     const credential = new DefaultAzureCredential();
@@ -84,4 +107,28 @@ export const OpenAIDALLEInstance =  () => {
     });
     return openai;
   }
+};
+
+export const OpenAIReasoningInstance = () => {
+  const endpointSuffix = DEFAULT_ENDPOINT_SUFFIX;
+  const { instance, deployment, apiVersion, token } = resolveReasoningConfig();
+
+  if (USE_MANAGED_IDENTITIES) {
+    const credential = new DefaultAzureCredential();
+    const scope = "https://cognitiveservices.azure.com/.default";
+    const azureADTokenProvider = getBearerTokenProvider(credential, scope);
+    return new AzureOpenAI({
+      azureADTokenProvider,
+      deployment,
+      apiVersion,
+      baseURL: `https://${instance}.${endpointSuffix}/openai/deployments/${deployment}`,
+    });
+  }
+
+  return new OpenAI({
+    apiKey: token,
+    baseURL: `https://${instance}.${endpointSuffix}/openai/deployments/${deployment}`,
+    defaultQuery: { "api-version": apiVersion },
+    defaultHeaders: { "api-key": token },
+  });
 };

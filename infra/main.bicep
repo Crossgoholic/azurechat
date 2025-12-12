@@ -68,6 +68,12 @@ param chatGptDeploymentCapacity int = 30
 param chatGptDeploymentName string = 'gpt-4o'
 param chatGptModelName string = 'gpt-4o'
 param chatGptModelVersion string = '2024-05-13'
+@description('Deploy an additional GPT-5.2 reasoning model alongside the default GPT-4o deployment.')
+param enableReasoningDeployment bool = false
+param reasoningDeploymentCapacity int = 30
+param reasoningDeploymentName string = 'gpt-5.2'
+param reasoningModelName string = 'gpt-5.2'
+param reasoningModelVersion string = '2025-01-13'
 param embeddingDeploymentName string = 'embedding'
 param embeddingDeploymentCapacity int = 120
 param embeddingModelName string = 'text-embedding-ada-002'
@@ -115,6 +121,11 @@ module resources 'resources.bicep' = {
     chatGptDeploymentName: chatGptDeploymentName
     chatGptModelName: chatGptModelName
     chatGptModelVersion: chatGptModelVersion
+    enableReasoningDeployment: enableReasoningDeployment
+    reasoningDeploymentCapacity: reasoningDeploymentCapacity
+    reasoningDeploymentName: reasoningDeploymentName
+    reasoningModelName: reasoningModelName
+    reasoningModelVersion: reasoningModelVersion
     embeddingDeploymentName: embeddingDeploymentName
     embeddingDeploymentCapacity: embeddingDeploymentCapacity
     embeddingModelName: embeddingModelName
@@ -151,6 +162,10 @@ output AZURE_OPENAI_API_EMBEDDINGS_DEPLOYMENT_NAME string = embeddingDeploymentN
 output AZURE_OPENAI_DALLE_API_INSTANCE_NAME string = resources.outputs.openai_dalle_name
 output AZURE_OPENAI_DALLE_API_DEPLOYMENT_NAME string = dalleDeploymentName
 output AZURE_OPENAI_DALLE_API_VERSION string = dalleApiVersion
+output AZURE_OPENAI_REASONING_API_INSTANCE_NAME string = resources.outputs.openai_name
+output AZURE_OPENAI_REASONING_API_DEPLOYMENT_NAME string =
+  enableReasoningDeployment ? reasoningDeploymentName : ''
+output AZURE_OPENAI_REASONING_API_VERSION string = openAIApiVersion
 
 output AZURE_COSMOSDB_ACCOUNT_NAME string = resources.outputs.cosmos_name
 output AZURE_COSMOSDB_URI string = resources.outputs.cosmos_endpoint

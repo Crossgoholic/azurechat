@@ -5,6 +5,7 @@ A new year brings some much requested feature updates to one of our most popular
 - **[Managed Identity-based security](/docs/9-managed-identities.md)**. This uses Azure's underlying RBAC and removes (almost) all keys/secrets.
 - `appreg_setup.ps1` and `appreg_setup.sh` helper scripts to **[create the App Registration for you](/docs/3-add-identity.md#entra-id-authentication-provider)** in Entra ID (if you have the permissions). Less copypasta means happier devs 🥰
 - Added support for private endpoints and ESLZ compliant deployment
+- GPT-5.2 reasoning model integration for standard chats (opt-in via the new `AZURE_OPENAI_REASONING_*` env variables).
 
 # Unleash the Power of Azure OpenAI
 
